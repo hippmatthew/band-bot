@@ -105,6 +105,17 @@ async def skip(ctx):
   voice.stop()
 
 @band_bot.command()
+@commands.has_permissions( manage_nicknames = True )
+async def artist(ctx, *, new_name: str):
+  try:
+    await ctx.guild.me.edit( nick = new_name )
+    await ctx.send(f'Welcome to the stage, {new_name}!')
+  except discord.Forbidden:
+    await ctx.send(f'You can\'t tell me which performer to invite')
+  except Exception as e:
+    await ctx.send(f'I would invite them to play, but I encountered the exception: {e}')
+
+@band_bot.command()
 async def clear(ctx):
   voice = ctx.voice_client
 
@@ -140,5 +151,6 @@ async def play_next(ctx, voice):
       print(f'failed to play next song with exception: {e}')
 
   voice.play(discord.FFmpegPCMAudio( song, options = '-vn' ), after)
+
 
 band_bot.run(DISC_TOKEN)
