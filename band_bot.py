@@ -14,7 +14,7 @@ DISC_TOKEN = os.getenv('DISC_TOKEN')
 if not DISC_TOKEN:
   raise SystemExit('failed to get discord token')
 
-ydl_opts = {}
+ydl_opts = { 'format': 'mp4', 'paths': { 'home': '.' }, 'outputmpl': 'song' }
 
 band_bot = BandBot(commands.Bot( command_prefix = '/', intents = discord.Intents.all() ))
 songs = SongQueue()
@@ -172,10 +172,8 @@ async def play_next(interaction: discord.Interaction):
     await band_bot.disconnect()
     return
 
-  song = songs.next()
-
   with YoutubeDL(ydl_opts) as ydl:
-    info = ydl.extract_info( song, download = False )
+    info = ydl.extract_info( songs.next(), download = True )
   title = info.get('title', 'Unknown') if info else 'Unknown'
 
   def after(error):
@@ -190,8 +188,7 @@ async def play_next(interaction: discord.Interaction):
     except Exception as e:
       print(f'failed to play next song with exception: {e}')
 
-
   await interaction.followup.send(f'Next up: {title}')
-  band_bot.voice_client.play(discord.FFmpegPCMAudio( song, options = '-vn' ), after = after)
+  band_bot.voice_client.play(discord.FFmpegPCMAudio('/home/bandbot/song.mp4', options = '-vn' ), after = after )
 
 band_bot.bot.run(DISC_TOKEN)
