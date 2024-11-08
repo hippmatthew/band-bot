@@ -20,9 +20,10 @@ songs = SongQueue()
 
 @band_bot.event
 async def on_ready():
+  await band_bot.tree.sync()
   print(f'Logged in as {band_bot.user}')
 
-@band_bot.command()
+@band_bot.tree.command( name = 'join', description = 'band bot joins a voice channel' )
 async def join(ctx):
   if not ctx.author.voice:
     await ctx.send(f'{ctx.author.voice.channel} ain\'t no bandstand!')
@@ -34,20 +35,20 @@ async def join(ctx):
 
   return ctx.voice_client
 
-@band_bot.command()
+@band_bot.tree.command( name = 'leave', description = 'band bot leaves a voice channel' )
 async def leave(ctx):
   if not ctx.voice_client: return
 
   await ctx.voice_client.disconnect()
   await ctx.send("I'm taking a break")
 
-@band_bot.command()
+@band_bot.tree.command( name = 'request', description = 'band bot accepts your music request' )
 async def request(ctx, *, search: str):
   voice = ctx.voice_client
 
   if not voice:
-    voice = await join(ctx)
-    if not voice: return
+    if not ctx.author.voice: return
+    voice = await ctx.author.voice.channel.connect()
 
   with YoutubeDL(ydl_opts) as ydl:
     try:
@@ -73,7 +74,7 @@ async def request(ctx, *, search: str):
   if not voice.is_playing():
     await play_next(ctx, voice)
 
-@band_bot.command()
+@band_bot.tree.command( name = 'queue', description = 'band bot displays the song queue' )
 async def queue(ctx):
   if not ctx.voice_client:
     await ctx.send('I\'m on break! Gimme something to play and I\'ll head to the bandstand')
@@ -89,7 +90,7 @@ async def queue(ctx):
 
     num += 1
 
-@band_bot.command()
+@band_bot.tree.command( name = 'skip', description = 'band bot skips the current song in the queue' )
 async def skip(ctx):
   voice = ctx.voice_client
 
@@ -104,7 +105,7 @@ async def skip(ctx):
   await ctx.send('Alright, Alright. I\'ll see what else there is to play')
   voice.stop()
 
-@band_bot.command()
+@band_bot.tree.command( name = 'artist', description = 'band bot invites a new artist to the bandstand' )
 @commands.has_permissions( manage_nicknames = True )
 async def artist(ctx, *, new_name: str):
   try:
@@ -115,7 +116,7 @@ async def artist(ctx, *, new_name: str):
   except Exception as e:
     await ctx.send(f'I would invite them to play, but I encountered the exception: {e}')
 
-@band_bot.command()
+@band_bot.tree.command( name = 'clear', description = 'band bot clears the song queue' )
 async def clear(ctx):
   voice = ctx.voice_client
 
@@ -127,7 +128,7 @@ async def clear(ctx):
 
 async def play_next(ctx, voice):
   if songs.empty():
-    await leave(ctx)
+    await voice.disconnect()
     return
 
   song = songs.next()
@@ -151,6 +152,5 @@ async def play_next(ctx, voice):
       print(f'failed to play next song with exception: {e}')
 
   voice.play(discord.FFmpegPCMAudio( song, options = '-vn' ), after)
-
 
 band_bot.run(DISC_TOKEN)
