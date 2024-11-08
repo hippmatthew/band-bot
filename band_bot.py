@@ -30,6 +30,8 @@ async def join(interaction: discord.Interaction):
     await interaction.response.send_message('I only perform on the big stage and this is definitely not that')
     return
 
+  if band_bot.voice_client: return;
+
   if not interaction.user.voice:
     await interaction.response.send_message('This ain\'t no bandstand!')
     return
@@ -59,9 +61,11 @@ async def request(interaction: discord.Interaction, *, search: str):
     await interaction.response.send_message('I only perform on the big stage and this is definitely not that')
     return
 
+  await interaction.response.defer()
+
   if not band_bot.voice_client:
     if not interaction.user.voice:
-      await interaction.response.send_message('This ain\'t no bandstand!')
+      await interaction.followup.send('This ain\'t no bandstand!')
       return
 
     channel = interaction.user.voice.channel
@@ -69,30 +73,30 @@ async def request(interaction: discord.Interaction, *, search: str):
 
     await band_bot.connect(channel)
     if not band_bot.voice_client: return
-    await interaction.response.send_message(f'I\'m performing at the {channel}')
+    await interaction.followup.send(f'I\'m performing at the {channel}')
 
   with YoutubeDL(ydl_opts) as ydl:
     try:
       info = ydl.extract_info( search, download = False )
     except Exception:
-      await interaction.response.send_message(
+      await interaction.followup.send(
         "Not sure I know this one. Check the url you gave me or give me better search terms"
       )
       return
 
     if not info:
-      await interaction.response.send_message('Not sure I\'m understanding what you want me to play')
+      await interaction.followup.send('Not sure I\'m understanding what you want me to play')
       return
 
     if 'entries' in info:
       for entry in info['entries']:
         url = entry['formats'][0]['url']
         songs.add(url)
-      await interaction.response.send_message(f'I\'ll play those {len(info['entries'])} jams for you')
+      await interaction.followup.send(f'I\'ll play those {len(info['entries'])} jams for you')
     else:
       url = info['formats'][0]['url']
       songs.add(url)
-      await interaction.response.send_message(f'Sure! I\'ll play {info['title']} for you')
+      await interaction.followup.send(f'Sure! I\'ll play {info['title']} for you')
 
   if not band_bot.voice_client.is_playing():
     await play_next(interaction)
@@ -107,13 +111,15 @@ async def queue(interaction: discord.Interaction):
     await interaction.response.send_message('I\'m on break! Gimme something to play and I\'ll head to the bandstand')
     return
 
+  await interaction.response.defer()
+
   num = 1
   for song in songs.urls:
     with YoutubeDL(ydl_opts) as ydl:
-      info = ydl.extract_info( song, download = False)
+      info = ydl.extract_info( song, download = False )
     title = info.get('title', 'Unknown') if info else 'Unknown'
 
-    await interaction.response.send_message(f'{num}. {title}')
+    await interaction.followup.send(f'{num}. {title}')
 
     num += 1
 
@@ -185,7 +191,7 @@ async def play_next(interaction: discord.Interaction):
       print(f'failed to play next song with exception: {e}')
 
 
-  await interaction.response.send_message(f'Next up: {title}')
+  await interaction.followup.send(f'Next up: {title}')
   band_bot.voice_client.play(discord.FFmpegPCMAudio( song, options = '-vn' ), after = after)
 
 band_bot.bot.run(DISC_TOKEN)
