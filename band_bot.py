@@ -10,6 +10,8 @@ from yt_dlp import YoutubeDL
 load_dotenv( dotenv_path = Path('./.env') )
 
 DISC_TOKEN = os.getenv('DISC_TOKEN')
+if not DISC_TOKEN:
+  raise SystemExit('failed to get discord token')
 
 ydl_opts = { 'format': 'bestaudio' }
 
@@ -138,3 +140,5 @@ async def play_next(ctx, voice):
       print(f'failed to play next song with exception: {e}')
 
   voice.play(discord.FFmpegPCMAudio( song, options = '-vn' ), after)
+
+band_bot.run(DISC_TOKEN)
