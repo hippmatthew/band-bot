@@ -14,7 +14,7 @@ DISC_TOKEN = os.getenv('DISC_TOKEN')
 if not DISC_TOKEN:
   raise SystemExit('failed to get discord token')
 
-ydl_opts = { 'format': 'mp4', 'paths': { 'home': '.' }, 'outputmpl': 'song' }
+ydl_opts = { 'paths': { 'home': '.' }, 'outputmpl': 'song' }
 
 band_bot = BandBot(commands.Bot( command_prefix = '/', intents = discord.Intents.all() ))
 songs = SongQueue()
