@@ -189,6 +189,6 @@ async def play_next(interaction: discord.Interaction):
       print(f'failed to play next song with exception: {e}')
 
   await interaction.followup.send(f'Next up: {title}')
-  band_bot.voice_client.play(discord.FFmpegPCMAudio('/home/bandbot/song.mp4', options = '-vn' ), after = after )
+  band_bot.voice_client.play(discord.FFmpegPCMAudio('/home/bandbot/song.jpg', options = '-vn' ), after = after )
 
 band_bot.bot.run(DISC_TOKEN)
