@@ -20,6 +20,7 @@ if not OUTPUT_PATH:
 
 band_bot = commands.Bot( command_prefix = '/', intents = discord.Intents.all() )
 connection_manager = ConnectionManager()
+songs = SongQueue()
 
 @band_bot.event
 async def on_ready():
@@ -42,6 +43,13 @@ async def leave(interaction: discord.Interaction):
 
   await connection_manager.disconnect(interaction)
 
+  with os.scandir(OUTPUT_PATH) as entries:
+    for entry in entries:
+      try:
+        os.unlink(entry.path)
+      except Exception as e:
+        print(f'failed to remove file in queue directory with exception: {e}')
+
 @band_bot.tree.command( name = 'request', description = 'band bot takes your request' )
 async def request(interaction: discord.Interaction, *, url: str):
   if not isinstance(interaction.user, discord.Member):
@@ -58,20 +66,54 @@ async def request(interaction: discord.Interaction, *, url: str):
   else:
     await interaction.response.send_message('I think I may know that one')
 
-  opts = { 'format': 'bestaudio/best', 'noplaylist': True }
-
-  with YoutubeDL(opts) as ydl: info = ydl.extract_info( url, download = False )
+  with YoutubeDL({}) as ydl:
+    info = ydl.extract_info( url, download = False )
 
   if not info:
     await interaction.followup.send('Nah. I\'m not remembering it')
     return
 
+  if 'entries' in info:
+    for entry in info['entries']:
+      songs.add( entry['formats'][0]['url'], entry['title'] )
+  else:
+    songs.add( url, info['title'] )
+
+  if songs.empty():
+    await interaction.followup.send('Doesn\'t seem like you\'re asking me to play anything right now')
+    return
+
+  if not connection_manager.voice_client or not connection_manager.voice_client.is_playing(): return
+
+  while not songs.empty():
+    if not connection_manager.voice_client: continue
+
+    url, title, filename = songs.next()
+
+    opts = { 'format': 'bestaudio/best', 'outtmpl': f'{OUTPUT_PATH}/{filename}.mp4a' }
+    with YoutubeDL(opts) as ydl:
+      ydl.download(url)
+
+    await interaction.followup.send(f'Next Up: {title}')
+    connection_manager.voice_client.play(discord.FFmpegPCMAudio(f'{OUTPUT_PATH}/{filename}.mp4a'))
+
+@band_bot.tree.command( name = 'test', description = 'test' )
+async def test(interaction: discord.Interaction):
+  await interaction.response.send_message('testing audio')
+  if not connection_manager.voice_client: return
+
+  url = 'https://www.youtube.com/watch?v=po-0n1BKW2w'
+
+  with YoutubeDL() as ydl:
+    info = ydl.extract_info( url, download = False )
+  if not info: return
+
   filename = info['title'].replace(' ', '_')
-  opts['outtmpl'] = f'{OUTPUT_PATH}/{filename}.mp4a'
+  opts = { 'format': 'bestaudio/best', 'outtmpl': f'{OUTPUT_PATH}/{filename}.mp4a' }
 
-  with YoutubeDL(opts) as ydl: ydl.download(url)
+  with YoutubeDL(opts) as ydl:
+    ydl.download(url)
 
-  await interaction.followup.send(f'Next up: {info['title']}')
   connection_manager.voice_client.play(discord.FFmpegPCMAudio(f'{OUTPUT_PATH}/{filename}.mp4a'))
 
 band_bot.run(DISC_TOKEN)

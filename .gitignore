@@ -1,3 +1,4 @@
 .env
 /venv
-test.mp3
+/queue
+/__pycache__
