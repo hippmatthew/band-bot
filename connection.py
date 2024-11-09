@@ -30,3 +30,5 @@ class ConnectionManager:
 
     await self.voice_client.disconnect()
     await interaction.response.send_message("I'm taking a break")
+
+    self.voice_client = None
