@@ -1,4 +1,4 @@
-from bot_state import BotState
+from bot import Bot
 
 import discord
 import os
@@ -12,29 +12,27 @@ DISC_TOKEN = os.getenv( "DISC_TOKEN" )
 if not DISC_TOKEN:
   raise SystemExit('failed to get discord token')
 
-band_bot = BotState()
+band_bot = Bot()
 
-@band_bot._bot.event
+@band_bot.event
 async def on_ready():
-  await band_bot.sync()
+  await band_bot.tree.sync()
+  print(f"beating meat as {band_bot.user}")
 
-@band_bot._bot.tree.command( name = "join", description = "band bot joins your channel" )
+@band_bot.tree.command( name = "join", description = "band bot joins your channel" )
 async def join(interaction: discord.Interaction):
-  await band_bot.connect(interaction)
+  await band_bot.join(interaction)
 
-@band_bot._bot.tree.command( name = "leave", description = "band bot leaves your channel" )
+@band_bot.tree.command( name = "leave", description = "band bot leaves your channel" )
 async def leave(interaction: discord.Interaction):
-  await band_bot.disconnect(interaction)
+  await band_bot.leave(interaction)
 
-@band_bot._bot.tree.command( name = "play", description = "band bot queues up your song" )
+@band_bot.tree.command( name = "play", description = "band bot queues up your song" )
 async def play(interaction: discord.Interaction, *, url: str):
-  await band_bot.add_song(interaction, url)
+  await band_bot.play(interaction, url)
 
-@band_bot._bot.tree.command( name = "test", description = "test" )
+@band_bot.tree.command( name = "test", description = "test" )
 async def test(interaction: discord.Interaction):
-  file = open("./.env", "a")
-  file.write(f"GUILD_ID='{interaction.guild_id}'")
-  file.close()
   await interaction.response.send_message("meat beat")
 
 band_bot.run(DISC_TOKEN)
