@@ -132,3 +132,25 @@ class Bot(commands.Bot):
       discord.FFmpegPCMAudio(f"{OUTPUT_PATH}/{song.title}.mp4a"),
       after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction), self.loop)
     )
+
+  async def stream(self, interaction: discord.Interaction):
+    if not self._voice_client:
+      await self.join(interaction)
+      if not self._voice_client: return
+    else:
+      await interaction.response.send_message("meat beat")
+
+    url = "https://www.youtube.com/watch?v=po-0n1BKW2w"
+
+    opts = {
+      "format": "beataudio/best",
+      "outtmpl": f"{OUTPUT_PATH}/%(title)s.mp4a",
+      "noplaylist": True
+    }
+
+    info = YoutubeDL(opts).extract_info( url, download = False )
+    if not info:
+      print('failed to get info')
+      return
+
+    self._voice_client.play( discord.FFmpegPCMAudio(info['url'], options = "-vn") )
