@@ -50,7 +50,7 @@ async def leave(interaction: discord.Interaction):
       except Exception as e:
         print(f'failed to remove file in queue directory with exception: {e}')
 
-@band_bot.tree.command( name = 'play', description = 'band bot plays a YouTube song or playlist' )
+@band_bot.tree.command( name = 'play', description = 'band bot takes your request' )
 async def play(interaction: discord.Interaction, *, url: str):
   if not isinstance(interaction.user, discord.Member):
     await interaction.response.send_message('We\'re not even at a venue. Don\'t ask me to play here')
@@ -61,10 +61,10 @@ async def play(interaction: discord.Interaction, *, url: str):
     if not connection_manager.voice_client:
       await interaction.followup.send('Sorry, I cant make it right now')
       return
-
-    await interaction.followup.send('I think I may know that one')
   else:
-    await interaction.response.send_message('I think I may know that one')
+    await interaction.response.defer()
+
+  await interaction.followup.send('I think I may know that one')
 
   try:
     info = YoutubeDL().extract_info( url, download = False )
@@ -90,6 +90,23 @@ async def play(interaction: discord.Interaction, *, url: str):
 
   if not connection_manager.voice_client.is_playing():
     await play_next(interaction)
+
+@band_bot.tree.command( name = 'skip', description = 'band bot skips the current song' )
+async def skip(interaction: discord.Interaction):
+  if not isinstance(interaction.user, discord.Member):
+    await interaction.response.send_message('We\'re not even at a venue. Don\'t ask me to play here')
+    return
+
+  if not connection_manager.voice_client:
+    await interaction.response.send_message('You\'re not in a voice channel')
+    return
+
+  if not connection_manager.voice_client.is_playing():
+    await interaction.response.send_message('Nothings playing')
+    return
+
+  await interaction.response.send_message('Fine I\'ll play the next song')
+  connection_manager.voice_client.stop()
 
 async def play_next(interaction: discord.Interaction):
   if songs.empty() or not connection_manager.voice_client: return
