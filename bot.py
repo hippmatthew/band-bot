@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional, cast
 from yt_dlp import YoutubeDL
 
+from song_queue import SongQueue, Song
+
 load_dotenv( dotenv_path = Path('./.env') )
 
 GUILD_ID = os.getenv( "GUILD_ID" )
@@ -21,7 +23,7 @@ if not OUTPUT_PATH:
 class Bot(commands.Bot):
   def __init__(self):
     self._voice_client: Optional[discord.VoiceClient] = None
-    self._queue: list[tuple[str, str]] = []
+    self._queue = SongQueue()
 
     super().__init__( command_prefix = "/", intents = discord.Intents.all() )
 
@@ -85,7 +87,12 @@ class Bot(commands.Bot):
       await interaction.followup.send("I don't know that tune")
       return
 
-    self._queue.append(( info["title"], f"{OUTPUT_PATH}/{info["title"]}.mp4a" ))
+    song = Song(
+      title=info["title"],
+      url=url,
+      requester=cast(discord.member, interaction.user) 
+      )
+    self._queue.add(song)
     await interaction.followup.send(f"Added to queue: {info["title"]}")
 
     if not self._voice_client.is_playing():
@@ -113,14 +120,15 @@ class Bot(commands.Bot):
     return True
 
   async def _play_next(self, interaction):
-    if len(self._queue) == 0: return
+    if self._queue.empty(): return
     if not self._voice_client: return
 
-    name, path = self._queue.pop(0)
+    song = self._queue.next()
 
-    await interaction.followup.send(f"Up Next: {name}")
+    embed=discord.Embed(title=f"Up Next: {song.title}", description=f"requested by: {song.requester.mention}", color=discord.Color.dark_gold(), url=song.url)
+    await interaction.followup.send(embed=embed)
 
     self._voice_client.play(
-      discord.FFmpegPCMAudio(path),
+      discord.FFmpegPCMAudio(f"{OUTPUT_PATH}/{song.title}.mp4a"),
       after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction), self.loop)
     )
