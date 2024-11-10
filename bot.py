@@ -18,42 +18,15 @@ OUTPUT_PATH = os.getenv( "OUTPUT_PATH" )
 if not OUTPUT_PATH:
   raise SystemExit("failed to get output path")
 
-class BotState:
+class Bot(commands.Bot):
   def __init__(self):
-    self._bot = commands.Bot( command_prefix = "/", intents = discord.Intents.all() )
     self._voice_client: Optional[discord.VoiceClient] = None
     self._queue: list[tuple[str, str]] = []
 
-  def run(self, token: str):
-    self._bot.run(token)
+    super().__init__( command_prefix = "/", intents = discord.Intents.all() )
 
-  async def sync(self):
-    await self._bot.tree.sync()
-    print(f"logged in as {self._bot.user}")
-
-  async def validate(self, interaction: discord.Interaction):
-    if not isinstance(interaction.user, discord.Member):
-      await interaction.response.send_message("This ain't no bandstand!")
-      return False
-
-    if interaction.user.guild.id != GUILD_ID:
-      await interaction.response.send_message(
-        "BandBot is designed for a single server only. Please uninstall this bot immediately"
-      )
-      return False
-
-    if not interaction.user.voice:
-      await interaction.response.send_message("You ain't even at the venue!")
-      return False
-
-    if not interaction.user.voice.channel:
-      await interaction.response.send_message("You ain't even at the venue!")
-      return False
-
-    return True
-
-  async def connect(self, interaction: discord.Interaction):
-    if not await self.validate(interaction): return
+  async def join(self, interaction: discord.Interaction):
+    if not await self._validate(interaction): return
 
     user = cast(discord.Member, interaction.user)
     voice = cast(discord.VoiceState, user.voice)
@@ -68,8 +41,8 @@ class BotState:
       f"{self._voice_client.user.display_name} is performing at {channel.name}"
     )
 
-  async def disconnect(self, interaction: discord.Interaction):
-    if not await self.validate(interaction): return
+  async def leave(self, interaction: discord.Interaction):
+    if not await self._validate(interaction): return
 
     if not self._voice_client:
       await interaction.response.send_message("I'm already on break!")
@@ -80,11 +53,19 @@ class BotState:
 
     self._voice_client = None
 
-  async def add_song(self, interaction: discord.Interaction, url: str):
-    if not await self.validate(interaction): return
+    with os.scandir(OUTPUT_PATH) as entries:
+      for entry in entries:
+        try:
+          os.unlink(entry.path)
+        except Exception as e:
+          print(f'failed to remove file in queue directory with exception: {e}')
+
+  async def play(self, interaction: discord.Interaction, url: str):
+    if not await self._validate(interaction): return
 
     if not self._voice_client:
-      await self.connect(interaction)
+      await self.join(interaction)
+      if not self._voice_client: return
     else:
       await interaction.response.defer()
 
@@ -110,6 +91,27 @@ class BotState:
     if not self._voice_client.is_playing():
       await self._play_next(interaction)
 
+  async def _validate(self, interaction: discord.Interaction):
+    if not isinstance(interaction.user, discord.Member):
+      await interaction.response.send_message("This ain't no bandstand!")
+      return False
+
+    if interaction.user.guild.id != GUILD_ID:
+      await interaction.response.send_message(
+        "BandBot is designed for a single server only. Please uninstall this bot immediately"
+      )
+      return False
+
+    if not interaction.user.voice:
+      await interaction.response.send_message("You ain't even at the venue!")
+      return False
+
+    if not interaction.user.voice.channel:
+      await interaction.response.send_message("You ain't even at the venue!")
+      return False
+
+    return True
+
   async def _play_next(self, interaction):
     if len(self._queue) == 0: return
     if not self._voice_client: return
@@ -120,5 +122,5 @@ class BotState:
 
     self._voice_client.play(
       discord.FFmpegPCMAudio(path),
-      after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction), self._bot.loop)
+      after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction), self.loop)
     )
