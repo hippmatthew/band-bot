@@ -1,28 +1,28 @@
+import asyncio
 import discord
 import os
 from discord.ext import commands
 from dotenv import load_dotenv
 from pathlib import Path
 from typing import Optional, cast
+from yt_dlp import YoutubeDL
 
-load_dotenv( dotenv_path = Path("./.env") )
+load_dotenv( dotenv_path = Path('./.env') )
 
 GUILD_ID = os.getenv( "GUILD_ID" )
 if not GUILD_ID:
-  raise SystemExit("failed to get GUILD_ID environment variable")
+  raise SystemExit("failed to get guild id")
 GUILD_ID = int(GUILD_ID)
 
-class Song:
-  def __init__(self, url: str, title: str):
-    self.url = url,
-    self.title = title,
-    self.filename = title.replace(" ", "_")
+OUTPUT_PATH = os.getenv( "OUTPUT_PATH" )
+if not OUTPUT_PATH:
+  raise SystemExit("failed to get output path")
 
 class BotState:
   def __init__(self):
     self._bot = commands.Bot( command_prefix = "/", intents = discord.Intents.all() )
     self._voice_client: Optional[discord.VoiceClient] = None
-    self._queue: list[Song] = []
+    self._queue: list[tuple[str, str]] = []
 
   def run(self, token: str):
     self._bot.run(token)
@@ -35,9 +35,6 @@ class BotState:
     if not isinstance(interaction.user, discord.Member):
       await interaction.response.send_message("This ain't no bandstand!")
       return False
-
-    print(f"guild id: {GUILD_ID}")
-    print(f"user guild id: {interaction.user.guild.id}")
 
     if interaction.user.guild.id != GUILD_ID:
       await interaction.response.send_message(
@@ -82,3 +79,46 @@ class BotState:
     await interaction.response.send_message("I'm taking a break!")
 
     self._voice_client = None
+
+  async def add_song(self, interaction: discord.Interaction, url: str):
+    if not await self.validate(interaction): return
+
+    if not self._voice_client:
+      await self.connect(interaction)
+    else:
+      await interaction.response.defer()
+
+    opts = {
+      "format": "beataudio/best",
+      "outtmpl": f"{OUTPUT_PATH}/%(title)s.mp4a",
+      "noplaylist": True
+    }
+
+    try:
+      info = YoutubeDL(opts).extract_info(url, download = True )
+    except Exception as e:
+      await interaction.followup.send("I don't think that song is an actual song")
+      return
+
+    if not info:
+      await interaction.followup.send("I don't know that tune")
+      return
+
+    self._queue.append(( info["title"], f"{OUTPUT_PATH}/{info["title"]}.mp4a" ))
+    await interaction.followup.send(f"Added to queue: {info["title"]}")
+
+    if not self._voice_client.is_playing():
+      await self._play_next(interaction)
+
+  async def _play_next(self, interaction):
+    if len(self._queue) == 0: return
+    if not self._voice_client: return
+
+    name, path = self._queue.pop(0)
+
+    await interaction.followup.send(f"Up Next: {name}")
+
+    self._voice_client.play(
+      discord.FFmpegPCMAudio(path),
+      after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction), self._bot.loop)
+    )

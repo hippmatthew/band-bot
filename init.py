@@ -26,6 +26,10 @@ async def join(interaction: discord.Interaction):
 async def leave(interaction: discord.Interaction):
   await band_bot.disconnect(interaction)
 
+@band_bot._bot.tree.command( name = "play", description = "band bot queues up your song" )
+async def play(interaction: discord.Interaction, *, url: str):
+  await band_bot.add_song(interaction, url)
+
 @band_bot._bot.tree.command( name = "test", description = "test" )
 async def test(interaction: discord.Interaction):
   file = open("./.env", "a")
