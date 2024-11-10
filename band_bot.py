@@ -50,8 +50,8 @@ async def leave(interaction: discord.Interaction):
       except Exception as e:
         print(f'failed to remove file in queue directory with exception: {e}')
 
-@band_bot.tree.command( name = 'request', description = 'band bot takes your request' )
-async def request(interaction: discord.Interaction, *, url: str):
+@band_bot.tree.command( name = 'play', description = 'band bot plays a YouTube song or playlist' )
+async def play(interaction: discord.Interaction, *, url: str):
   if not isinstance(interaction.user, discord.Member):
     await interaction.response.send_message('We\'re not even at a venue. Don\'t ask me to play here')
     return
