@@ -31,8 +31,8 @@ async def leave(interaction: discord.Interaction):
 async def play(interaction: discord.Interaction, *, url: str):
   await band_bot.play(interaction, url)
 
-@band_bot.tree.command( name = "test", description = "test" )
-async def test(interaction: discord.Interaction):
-  await interaction.response.send_message("meat beat")
+@band_bot.tree.command( name = "stream", description = "streams rather than downloads" )
+async def stream(interaction: discord.Interaction):
+  await band_bot.stream(interaction)
 
 band_bot.run(DISC_TOKEN)
