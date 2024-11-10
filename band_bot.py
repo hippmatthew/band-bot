@@ -66,8 +66,11 @@ async def request(interaction: discord.Interaction, *, url: str):
   else:
     await interaction.response.send_message('I think I may know that one')
 
-  with YoutubeDL({}) as ydl:
-    info = ydl.extract_info( url, download = False )
+  try:
+    info = YoutubeDL().extract_info( url, download = False )
+  except:
+    await interaction.followup.send('Nevermind. Not sure that\'s an actual song')
+    return
 
   if not info:
     await interaction.followup.send('Nah. I\'m not remembering it')
@@ -75,45 +78,32 @@ async def request(interaction: discord.Interaction, *, url: str):
 
   if 'entries' in info:
     for entry in info['entries']:
+      print(f'entry url: {entry['formats'][0]['url']}')
       songs.add( entry['formats'][0]['url'], entry['title'] )
   else:
+    print('not a playlist')
     songs.add( url, info['title'] )
 
   if songs.empty():
     await interaction.followup.send('Doesn\'t seem like you\'re asking me to play anything right now')
     return
 
-  if not connection_manager.voice_client or not connection_manager.voice_client.is_playing(): return
+  if not connection_manager.voice_client.is_playing():
+    await play_next(interaction)
 
-  while not songs.empty():
-    if not connection_manager.voice_client: continue
+async def play_next(interaction: discord.Interaction):
+  if songs.empty() or not connection_manager.voice_client: return
 
-    url, title, filename = songs.next()
+  url, title, filename = songs.next()
 
-    opts = { 'format': 'bestaudio/best', 'outtmpl': f'{OUTPUT_PATH}/{filename}.mp4a' }
-    with YoutubeDL(opts) as ydl:
-      ydl.download(url)
-
-    await interaction.followup.send(f'Next Up: {title}')
-    connection_manager.voice_client.play(discord.FFmpegPCMAudio(f'{OUTPUT_PATH}/{filename}.mp4a'))
-
-@band_bot.tree.command( name = 'test', description = 'test' )
-async def test(interaction: discord.Interaction):
-  await interaction.response.send_message('testing audio')
-  if not connection_manager.voice_client: return
-
-  url = 'https://www.youtube.com/watch?v=po-0n1BKW2w'
-
-  with YoutubeDL() as ydl:
-    info = ydl.extract_info( url, download = False )
-  if not info: return
-
-  filename = info['title'].replace(' ', '_')
   opts = { 'format': 'bestaudio/best', 'outtmpl': f'{OUTPUT_PATH}/{filename}.mp4a' }
+  YoutubeDL(opts).download(url)
 
-  with YoutubeDL(opts) as ydl:
-    ydl.download(url)
+  await interaction.followup.send(f'Next Up: {title}')
 
-  connection_manager.voice_client.play(discord.FFmpegPCMAudio(f'{OUTPUT_PATH}/{filename}.mp4a'))
+  connection_manager.voice_client.play(
+    discord.FFmpegPCMAudio(f'{OUTPUT_PATH}/{filename}.mp4a'),
+    after = lambda e: asyncio.run_coroutine_threadsafe(play_next(interaction), band_bot.loop)
+  )
 
 band_bot.run(DISC_TOKEN)

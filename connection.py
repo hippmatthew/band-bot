@@ -5,6 +5,7 @@ from typing import Optional
 class ConnectionManager:
   def __init__(self):
     self.voice_client: Optional[discord.VoiceClient] = None
+    self.ffmpeg_opts = { 'options': '-vn' }
 
   async def connect(self, interaction: discord.Interaction, member: discord.Member):
     if self.voice_client:
