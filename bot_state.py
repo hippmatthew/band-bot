@@ -20,28 +20,65 @@ class Song:
 
 class BotState:
   def __init__(self):
-    self.bot = commands.Bot( command_prefix = "/", intents = discord.Intents.all() )
-    self.voice_client: Optional[discord.VoiceClient] = None
-    self.queue: list[Song] = []
+    self._bot = commands.Bot( command_prefix = "/", intents = discord.Intents.all() )
+    self._voice_client: Optional[discord.VoiceClient] = None
+    self._queue: list[Song] = []
+
+  def run(self, token: str):
+    self._bot.run(token)
+
+  async def sync(self):
+    await self._bot.tree.sync()
+    print(f"logged in as {self._bot.user}")
 
   async def validate(self, interaction: discord.Interaction):
     if not isinstance(interaction.user, discord.Member):
       await interaction.response.send_message("This ain't no bandstand!")
-      return
+      return False
 
-    if not interaction.user.guild.id == GUILD_ID:
+    print(f"guild id: {GUILD_ID}")
+    print(f"user guild id: {interaction.user.guild.id}")
+
+    if interaction.user.guild.id != GUILD_ID:
       await interaction.response.send_message(
         "BandBot is designed for a single server only. Please uninstall this bot immediately"
       )
-      return
+      return False
 
     if not interaction.user.voice:
       await interaction.response.send_message("You ain't even at the venue!")
-      return
+      return False
 
     if not interaction.user.voice.channel:
       await interaction.response.send_message("You ain't even at the venue!")
-      return
+      return False
+
+    return True
 
   async def connect(self, interaction: discord.Interaction):
-    if not self.validate(interaction): return
+    if not await self.validate(interaction): return
+
+    user = cast(discord.Member, interaction.user)
+    voice = cast(discord.VoiceState, user.voice)
+    channel = cast(discord.VoiceChannel, voice.channel)
+
+    if self._voice_client and self._voice_client.channel != channel:
+      await self._voice_client.move_to(channel)
+    else:
+      self._voice_client = await channel.connect()
+
+    await interaction.response.send_message(
+      f"{self._voice_client.user.display_name} is performing at {channel.name}"
+    )
+
+  async def disconnect(self, interaction: discord.Interaction):
+    if not await self.validate(interaction): return
+
+    if not self._voice_client:
+      await interaction.response.send_message("I'm already on break!")
+      return
+
+    await self._voice_client.disconnect()
+    await interaction.response.send_message("I'm taking a break!")
+
+    self._voice_client = None
