@@ -136,7 +136,7 @@ class Bot(commands.Bot):
     embed=discord.Embed(title=f"Up Next: {song.title}", description=f"requested by: {song.requester.mention}", color=discord.Color.dark_gold(), url=song.url)
     await interaction.followup.send(embed=embed)
 
-    stream = "surprise.mp4a" if random.randint(1, 100) <= 10 else song
+    stream = "rickroll.mp4a" if random.randint(1, 100) == 69 else song
 
     self._voice_client.play(
       discord.FFmpegPCMAudio( song.stream, options = "-vn" ),
