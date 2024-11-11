@@ -23,7 +23,7 @@ async def on_ready():
 async def join(interaction: discord.Interaction):
   await band_bot.join(interaction)
 
-@band_bot.tree.command( name = "leave", description = "band bot leaves your channel" )
+@band_bot.tree.command( name = "leave", description = "band bot leaves your channel and clears the queue")
 async def leave(interaction: discord.Interaction):
   await band_bot.leave(interaction)
 
