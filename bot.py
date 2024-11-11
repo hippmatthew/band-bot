@@ -2,6 +2,7 @@ import asyncio
 import discord
 import os
 import random
+from datetime import datetime
 from discord.ext import commands
 from dotenv import load_dotenv
 from pathlib import Path
@@ -22,6 +23,7 @@ class Bot(commands.Bot):
     self._voice_client: Optional[discord.VoiceClient] = None
     self._queue = SongQueue()
     self._is_looping = False
+    self._ytdl_opts = { "format": "beataudio/best" }
 
     super().__init__( command_prefix = "/", intents = discord.Intents.all() )
 
@@ -53,41 +55,58 @@ class Bot(commands.Bot):
 
     self._voice_client = None
 
-  async def play(self, interaction: discord.Interaction, url: str):
+  async def play(self, interaction: discord.Interaction, url: str, is_playlist: bool = False):
     if not await self._validate(interaction): return
 
     if not self._voice_client:
       await self.join(interaction)
-      if not self._voice_client: return
     else:
-      await interaction.response.defer()
+      await interaction.response.defer( thinking = True )
 
-    opts = {
-      "format": "beataudio/best",
-      "noplaylist": True,
-    }
-
-    try:
-      info = YoutubeDL(opts).extract_info(url, download = False )
-    except Exception as e:
-      await interaction.followup.send("I don't think that song is an actual song")
-      return
+    if is_playlist:
+      try:
+        info = await self.loop.run_in_executor(
+          None,
+          lambda: YoutubeDL(self._ytdl_opts).extract_info(url, download = False)
+        )
+      except Exception as e:
+        await interaction.followup.send("Thats a whole lotta nothing")
+        return
+    else:
+      try:
+        info = YoutubeDL(self._ytdl_opts).extract_info(url, download = False )
+      except Exception as e:
+        await interaction.followup.send("I don't think that song is an actual song")
+        return
 
     if not info:
       await interaction.followup.send("I don't know that tune")
       return
 
-    song = Song(
-      title = info["title"],
-      url = url,
-      requester = cast(discord.Member, interaction.user),
-      stream = info["url"]
-    )
-    self._queue.add(song)
-    await interaction.followup.send(f"Added to queue: {info["title"]}")
+    if "entries" in info:
+      for entry in info["entries"]:
+        self._queue.add(
+          Song(
+            title       = entry["title"],
+            url         = url,
+            requester   = cast(discord.Member, interaction.user),
+            stream      = entry["url"]
+          )
+        )
+      await interaction.followup.send(f"Added {len(info['entries'])} songs to queue")
+    else:
+      self._queue.add(
+        Song(
+          title       = info["title"],
+          url         = url,
+          requester   = cast(discord.Member, interaction.user),
+          stream      = info["url"]
+        )
+      )
+      await interaction.followup.send(f"Added to queue: {info["title"]}")
 
     if not self._voice_client.is_playing():
-      await self._play_next(interaction, song)
+      await self._play_next(interaction, None)
 
   async def _validate(self, interaction: discord.Interaction):
     if not isinstance(interaction.user, discord.Member):
@@ -111,7 +130,7 @@ class Bot(commands.Bot):
     return True
 
   async def skip(self, interaction: discord.Interaction):
-    if not self._validate(interaction): return
+    if not await self._validate(interaction): return
 
     if not self._voice_client:
       await interaction.response.send_message("I'm eating a sandwich right now. Call me later")
@@ -127,18 +146,21 @@ class Bot(commands.Bot):
   def toggle_loop(self):
     self._is_looping = not self._is_looping
 
-  async def _play_next(self, interaction, prev_song: Song):
+  async def _play_next(self, interaction: discord.Interaction, prev_song: Optional[Song]):
     if self._queue.empty(): return
     if not self._voice_client: return
 
-    song = prev_song if self._is_looping else self._queue.next()
+    song = prev_song if prev_song else self._queue.next()
 
     embed=discord.Embed(title=f"Up Next: {song.title}", description=f"requested by: {song.requester.mention}", color=discord.Color.dark_gold(), url=song.url)
     await interaction.followup.send(embed=embed)
 
-    stream = "rickroll.mp4a" if random.randint(1, 100) == 69 else song
+    stream = "rickroll.mp4a" if random.randint(1, 100) == 69 else song.stream
 
     self._voice_client.play(
-      discord.FFmpegPCMAudio( song.stream, options = "-vn" ),
-      after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction, song), self.loop)
+      discord.FFmpegPCMAudio( stream, options = "-vn" ),
+      after = lambda e: asyncio.run_coroutine_threadsafe(
+        self._play_next(interaction, song if self._is_looping else None),
+        self.loop
+      )
     )
