@@ -2,10 +2,11 @@ from typing import Optional
 import discord
 
 class Song:
-  def __init__(self, title: str, url: str, requester: discord.Member):
+  def __init__(self, title: str, url: str, requester: discord.Member, stream: str):
     self.title = title
     self.url = url
     self.requester = requester
+    self.stream = stream
 
 class SongQueue:
   def __init__(self):
