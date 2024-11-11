@@ -16,10 +16,6 @@ if not GUILD_ID:
   raise SystemExit("failed to get guild id")
 GUILD_ID = int(GUILD_ID)
 
-OUTPUT_PATH = os.getenv( "OUTPUT_PATH" )
-if not OUTPUT_PATH:
-  raise SystemExit("failed to get output path")
-
 class Bot(commands.Bot):
   def __init__(self):
     self._voice_client: Optional[discord.VoiceClient] = None
@@ -55,13 +51,6 @@ class Bot(commands.Bot):
 
     self._voice_client = None
 
-    with os.scandir(OUTPUT_PATH) as entries:
-      for entry in entries:
-        try:
-          os.unlink(entry.path)
-        except Exception as e:
-          print(f'failed to remove file in queue directory with exception: {e}')
-
   async def play(self, interaction: discord.Interaction, url: str):
     if not await self._validate(interaction): return
 
@@ -73,12 +62,11 @@ class Bot(commands.Bot):
 
     opts = {
       "format": "beataudio/best",
-      "outtmpl": f"{OUTPUT_PATH}/%(title)s.mp4a",
       "noplaylist": True
     }
 
     try:
-      info = YoutubeDL(opts).extract_info(url, download = True )
+      info = YoutubeDL(opts).extract_info(url, download = False )
     except Exception as e:
       await interaction.followup.send("I don't think that song is an actual song")
       return
@@ -88,10 +76,11 @@ class Bot(commands.Bot):
       return
 
     song = Song(
-      title=info["title"],
-      url=url,
-      requester=cast(discord.member, interaction.user) 
-      )
+      title = info["title"],
+      url = url,
+      requester = cast(discord.Member, interaction.user),
+      stream = info["url"]
+    )
     self._queue.add(song)
     await interaction.followup.send(f"Added to queue: {info["title"]}")
 
@@ -129,28 +118,6 @@ class Bot(commands.Bot):
     await interaction.followup.send(embed=embed)
 
     self._voice_client.play(
-      discord.FFmpegPCMAudio(f"{OUTPUT_PATH}/{song.title}.mp4a"),
+      discord.FFmpegPCMAudio( song.stream, options = "-vn" ),
       after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction), self.loop)
     )
-
-  async def stream(self, interaction: discord.Interaction):
-    if not self._voice_client:
-      await self.join(interaction)
-      if not self._voice_client: return
-    else:
-      await interaction.response.send_message("meat beat")
-
-    url = "https://www.youtube.com/watch?v=po-0n1BKW2w"
-
-    opts = {
-      "format": "beataudio/best",
-      "outtmpl": f"{OUTPUT_PATH}/%(title)s.mp4a",
-      "noplaylist": True
-    }
-
-    info = YoutubeDL(opts).extract_info( url, download = False )
-    if not info:
-      print('failed to get info')
-      return
-
-    self._voice_client.play( discord.FFmpegPCMAudio(info['url'], options = "-vn") )
