@@ -1,5 +1,9 @@
-from typing import Optional
+import asyncio
 import discord
+from discord.ext import commands
+from threading import Thread
+from typing import Optional, cast
+from yt_dlp import YoutubeDL
 
 class Song:
   def __init__(self, title: str, url: str, requester: discord.Member, length: str):
@@ -7,6 +11,21 @@ class Song:
     self.url = url
     self.requester = requester
     self.length = length
+    self.stream = ""
+    self._thread = Thread(target = self._download)
+
+  def start_download(self):
+    self._thread.start()
+
+  def wait_for_stream(self):
+    self._thread.join()
+
+  def _download(self):
+    info = YoutubeDL({ "format": "bestaudio/best" }).extract_info( self.url, download = False )
+    if not info:
+      print(f"failed to download {self.title}")
+      return
+    self.stream = cast(str, info["url"])
 
 class SongQueue:
   def __init__(self):

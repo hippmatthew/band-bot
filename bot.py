@@ -1,12 +1,12 @@
 import asyncio
 import discord
 import os
-import random
 from datetime import datetime
 from discord.ext import commands
 from discord.ext.commands._types import UserCheck
 from dotenv import load_dotenv
 from pathlib import Path
+from random import randint
 from typing import Optional, cast
 from yt_dlp import YoutubeDL
 
@@ -83,7 +83,7 @@ class Bot(commands.Bot):
           title       = entry["title"],
           url         = entry['url'],
           requester   = cast(discord.Member, interaction.user),
-          length      = entry["duration"]
+          length      = entry["duration"],
         )
         self._queue.add(song)
 
@@ -93,7 +93,7 @@ class Bot(commands.Bot):
         title       = info["title"],
         url         = url,
         requester   = cast(discord.Member, interaction.user),
-        length      = info["duration_string"]
+        length      = info["duration_string"],
       )
 
       self._queue.add(song)
@@ -107,7 +107,9 @@ class Bot(commands.Bot):
       await interaction.followup.send(embed=add_to_queue_embed)
 
     if not cast(discord.VoiceClient, self._voice_client).is_playing():
-      await self._play_next(interaction, None)
+      song = self._queue.next()
+      song.start_download()
+      asyncio.run_coroutine_threadsafe(self._play_next(interaction, song), self.loop)
 
   async def _validate(self, interaction: discord.Interaction) -> bool:
     if not isinstance(interaction.user, discord.Member):
@@ -147,16 +149,17 @@ class Bot(commands.Bot):
   def toggle_loop(self):
     self._is_looping = not self._is_looping
 
-  async def _play_next(self, interaction: discord.Interaction, prev_song: Optional[Song]):
+  async def _play_next(self, interaction: discord.Interaction, song: Song):
     if self._queue.empty(): return
     if not self._voice_client: return
 
-    song = prev_song if prev_song else self._queue.next()
+    song.wait_for_stream()
+    stream = song.stream if randint(1, 100) != 69 else "rickroll.mp4a"
 
-    info = YoutubeDL({ 'format': 'bestaudio/best' }).extract_info(song.url, download = False)
-    if not info:
-      print('song is bussin')
-      return
+    next_song = song
+    if not self._is_looping:
+      next_song = self._queue.next()
+      next_song.start_download()
 
     now_playing_embed=discord.Embed(
       description=f"""
@@ -193,12 +196,10 @@ class Bot(commands.Bot):
     result = await interaction.followup.send(embed=now_playing_embed, view=NowPlayingView(self))
     self._now_playing_message_id = result.id
 
-    stream = "rickroll.mp4a" if random.randint(1, 100) == 69 else info['url']
-
     self._voice_client.play(
       discord.FFmpegPCMAudio( stream, options = "-vn" ),
       after = lambda e: asyncio.run_coroutine_threadsafe(
-        self._play_next(interaction, song if self._is_looping else None),
+        self._play_next(interaction, next_song),
         self.loop
       )
     )
