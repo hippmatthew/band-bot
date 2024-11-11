@@ -2,11 +2,12 @@ from typing import Optional
 import discord
 
 class Song:
-  def __init__(self, title: str, url: str, requester: discord.Member, stream: str):
+  def __init__(self, title: str, url: str, requester: discord.Member, stream: str, length: str):
     self.title = title
     self.url = url
     self.requester = requester
     self.stream = stream
+    self.length = length
 
 class SongQueue:
   def __init__(self):
@@ -17,7 +18,7 @@ class SongQueue:
     self.__queue.append(song)
 
   def empty(self):
-    return self.__queue.count == 0
+    return len(self.__queue) == 0
 
   def next(self):
     return self.__queue.pop(0)

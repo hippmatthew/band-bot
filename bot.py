@@ -4,6 +4,7 @@ import os
 import random
 from datetime import datetime
 from discord.ext import commands
+from discord.ext.commands._types import UserCheck
 from dotenv import load_dotenv
 from pathlib import Path
 from typing import Optional, cast
@@ -24,6 +25,7 @@ class Bot(commands.Bot):
     self._queue = SongQueue()
     self._is_looping = False
     self._ytdl_opts = { "format": "beataudio/best" }
+    self._now_playing_message_id: Optional[str] = None
 
     super().__init__( command_prefix = "/", intents = discord.Intents.all() )
 
@@ -50,7 +52,10 @@ class Bot(commands.Bot):
       await interaction.response.send_message("I'm already on break!")
       return
 
+    # cleanup
     await self._voice_client.disconnect()
+    self._voice_client = None
+    self._queue.clear()
     await interaction.response.send_message("I'm taking a break!")
 
     self._voice_client = None
@@ -85,30 +90,42 @@ class Bot(commands.Bot):
 
     if "entries" in info:
       for entry in info["entries"]:
-        self._queue.add(
-          Song(
-            title       = entry["title"],
-            url         = url,
-            requester   = cast(discord.Member, interaction.user),
-            stream      = entry["url"]
-          )
-        )
-      await interaction.followup.send(f"Added {len(info['entries'])} songs to queue")
-    else:
-      self._queue.add(
-        Song(
-          title       = info["title"],
+        song = Song(
+          title       = entry["title"],
           url         = url,
           requester   = cast(discord.Member, interaction.user),
-          stream      = info["url"]
+          stream      = entry["url"],
+          length      = info["duration_string"]
         )
+        self._queue.add(song)
+        add_to_queue_embed=discord.Embed(
+        title=f"{len(info['entries'])} songs",
+        url=song.url,
+        description=song.length
       )
-      await interaction.followup.send(f"Added to queue: {info["title"]}")
+      add_to_queue_embed.set_author(name=f"Added Playlist to Queue")
+      await interaction.followup.send(embed=add_to_queue_embed)
+    else:
+      song = Song(
+        title       = info["title"],
+        url         = url,
+        requester   = cast(discord.Member, interaction.user),
+        stream      = info["url"],
+        length      = info["duration_string"]
+      )
+      self._queue.add(song)
+      add_to_queue_embed=discord.Embed(
+        title=song.title,
+        url=song.url,
+        description=song.length
+      )
+      add_to_queue_embed.set_author(name=f"Added Song to Queue")
+      await interaction.followup.send(embed=add_to_queue_embed)
 
     if not self._voice_client.is_playing():
       await self._play_next(interaction, None)
 
-  async def _validate(self, interaction: discord.Interaction):
+  async def _validate(self, interaction: discord.Interaction) -> bool:
     if not isinstance(interaction.user, discord.Member):
       await interaction.response.send_message("This ain't no bandstand!")
       return False
@@ -152,8 +169,40 @@ class Bot(commands.Bot):
 
     song = prev_song if prev_song else self._queue.next()
 
-    embed=discord.Embed(title=f"Up Next: {song.title}", description=f"requested by: {song.requester.mention}", color=discord.Color.dark_gold(), url=song.url)
-    await interaction.followup.send(embed=embed)
+    now_playing_embed=discord.Embed(
+      description=f"""
+      ## <a:record:1305363860655444009> Now Playing
+      [{song.title}]({song.url})
+      {song.length}
+      {song.requester.mention}
+      """, 
+      color=discord.Color.dark_gold(), url=song.url
+    )
+
+    class NowPlayingView(discord.ui.View):
+      def __init__(self, bot: Bot):
+          super().__init__(timeout=None)
+          self._bot = bot
+
+      @discord.ui.button(label='Queue', style=discord.ButtonStyle.primary, custom_id='now_playing:queue', emoji='🎼')
+      async def queue(self, interaction: discord.Interaction, button: discord.ui.Button):
+          queue_str = self._bot._queue.print()
+          if len(queue_str) == 0:
+            queue_str = "Queue is empty!"
+          await interaction.response.send_message(queue_str, ephemeral=True)
+      
+      @discord.ui.button(label='Skip', style=discord.ButtonStyle.green, custom_id='now_playing:skip', emoji='⏩')
+      async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._bot.skip(interaction=interaction)
+
+      @discord.ui.button(label='Stop', style=discord.ButtonStyle.red, custom_id='now_playing:stop', emoji='🛑')
+      async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._bot.leave(interaction=interaction)
+
+    if self._now_playing_message_id != None:
+      await interaction.followup.delete_message(self._now_playing_message_id)
+    result = await interaction.followup.send(embed=now_playing_embed, view=NowPlayingView(self))
+    self._now_playing_message_id = result.id
 
     stream = "rickroll.mp4a" if random.randint(1, 100) == 69 else song.stream
 
