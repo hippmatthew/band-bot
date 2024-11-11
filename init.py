@@ -29,7 +29,7 @@ async def leave(interaction: discord.Interaction):
 
 @band_bot.tree.command( name = "play", description = "band bot queues up your song" )
 async def play(interaction: discord.Interaction, *, url: str, is_playlist: bool = False):
-  await band_bot.play(interaction, url)
+  await band_bot.play(interaction, url, is_playlist)
 
 @band_bot.tree.command( name = "skip", description = "band bot skips the current song" )
 async def skip(interaction: discord.Interaction):
