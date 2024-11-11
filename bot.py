@@ -1,6 +1,7 @@
 import asyncio
 import discord
 import os
+import random
 from discord.ext import commands
 from dotenv import load_dotenv
 from pathlib import Path
@@ -63,7 +64,7 @@ class Bot(commands.Bot):
 
     opts = {
       "format": "beataudio/best",
-      "noplaylist": True
+      "noplaylist": True,
     }
 
     try:
@@ -134,6 +135,8 @@ class Bot(commands.Bot):
 
     embed=discord.Embed(title=f"Up Next: {song.title}", description=f"requested by: {song.requester.mention}", color=discord.Color.dark_gold(), url=song.url)
     await interaction.followup.send(embed=embed)
+
+    stream = "surprise.mp4a" if random.randint(1, 100) <= 10 else song
 
     self._voice_client.play(
       discord.FFmpegPCMAudio( song.stream, options = "-vn" ),
