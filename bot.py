@@ -24,7 +24,7 @@ class Bot(commands.Bot):
     self._voice_client: Optional[discord.VoiceClient] = None
     self._queue = SongQueue()
     self._is_looping = False
-    self._ytdl_opts = { "format": "beataudio/best" }
+    self._ytdl_opts = { "extract_flat": 'in_playlist', "skip_download": True }
     self._now_playing_message_id: Optional[str] = None
 
     super().__init__( command_prefix = "/", intents = discord.Intents.all() )
@@ -60,19 +60,13 @@ class Bot(commands.Bot):
 
     self._voice_client = None
 
-  async def play(self, interaction: discord.Interaction, url: str, is_playlist: bool):
+  async def play(self, interaction: discord.Interaction, url: str):
     if not await self._validate(interaction): return
 
     if not self._voice_client:
       await self.join(interaction)
     else:
       await interaction.response.defer( thinking = True )
-
-    if is_playlist:
-      print('doing playlist')
-      asyncio.run_coroutine_threadsafe(self._download_next(interaction, url), self.loop)
-      return
-
     try:
       info = YoutubeDL(self._ytdl_opts).extract_info(url, download = False )
     except Exception as e:
@@ -83,23 +77,34 @@ class Bot(commands.Bot):
       await interaction.followup.send("I don't know that tune")
       return
 
-    song = Song(
-      title       = info["title"],
-      url         = url,
-      requester   = cast(discord.Member, interaction.user),
-      stream      = info["url"],
-      length      = info["duration_string"]
-    )
+    if 'entries' in info:
+      for entry in info['entries']:
+        song = Song(
+          title       = entry["title"],
+          url         = entry['url'],
+          requester   = cast(discord.Member, interaction.user),
+          length      = entry["duration"]
+        )
+        self._queue.add(song)
 
-    self._queue.add(song)
+      await interaction.followup.send(f"Added {info['playlist_count']} songs to queue")
+    else:
+      song = Song(
+        title       = info["title"],
+        url         = url,
+        requester   = cast(discord.Member, interaction.user),
+        length      = info["duration_string"]
+      )
 
-    add_to_queue_embed=discord.Embed(
-      title=song.title,
-      url=song.url,
-      description=song.length
-    )
-    add_to_queue_embed.set_author(name=f"Added Song to Queue")
-    await interaction.followup.send(embed=add_to_queue_embed)
+      self._queue.add(song)
+
+      add_to_queue_embed=discord.Embed(
+        title=song.title,
+        url=song.url,
+        description=song.length
+      )
+      add_to_queue_embed.set_author(name=f"Added Song to Queue")
+      await interaction.followup.send(embed=add_to_queue_embed)
 
     if not cast(discord.VoiceClient, self._voice_client).is_playing():
       await self._play_next(interaction, None)
@@ -142,40 +147,16 @@ class Bot(commands.Bot):
   def toggle_loop(self):
     self._is_looping = not self._is_looping
 
-  async def _download_next(self, interaction: discord.Interaction, url: str, iter: int = 1):
-    opts = self._ytdl_opts
-    opts["playlist_items"] = str(iter)
-
-    try:
-      info = YoutubeDL(opts).extract_info(url, download = False)
-    except Exception as e:
-      print(f"failed to get url info with exception: {e}")
-      return
-
-    if not info: return
-    entry = info['entries'][0]
-
-    self._queue.add(
-      Song(
-        title     = entry['title'],
-        url       = url,
-        requester = cast(discord.Member, interaction.user),
-        stream    = entry['url'],
-        length    = entry['duration_string']
-      )
-    )
-    await interaction.followup.send(f"Added {entry["title"]} to the queue")
-
-    asyncio.run_coroutine_threadsafe(self._download_next(interaction, url, iter + 1), self.loop)
-
-    if not cast(discord.VoiceClient, self._voice_client).is_playing():
-      await self._play_next(interaction, None)
-
   async def _play_next(self, interaction: discord.Interaction, prev_song: Optional[Song]):
     if self._queue.empty(): return
     if not self._voice_client: return
 
     song = prev_song if prev_song else self._queue.next()
+
+    info = YoutubeDL({ 'format': 'bestaudio/best' }).extract_info(song.url, download = False)
+    if not info:
+      print('song is bussin')
+      return
 
     now_playing_embed=discord.Embed(
       description=f"""
@@ -212,7 +193,7 @@ class Bot(commands.Bot):
     result = await interaction.followup.send(embed=now_playing_embed, view=NowPlayingView(self))
     self._now_playing_message_id = result.id
 
-    stream = "rickroll.mp4a" if random.randint(1, 100) == 69 else song.stream
+    stream = "rickroll.mp4a" if random.randint(1, 100) == 69 else info['url']
 
     self._voice_client.play(
       discord.FFmpegPCMAudio( stream, options = "-vn" ),
