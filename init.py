@@ -31,8 +31,15 @@ async def leave(interaction: discord.Interaction):
 async def play(interaction: discord.Interaction, *, url: str):
   await band_bot.play(interaction, url)
 
-@band_bot.tree.command( name = "stream", description = "streams rather than downloads" )
-async def stream(interaction: discord.Interaction):
-  await band_bot.stream(interaction)
+@band_bot.tree.command( name = "skip", description = "band bot skips the current song" )
+async def skip(interaction: discord.Interaction):
+  await band_bot.skip(interaction)
+
+@band_bot.tree.command( name = "loop", description = "band bot loops the current song" )
+async def loop(interaction: discord.Interaction):
+  band_bot.toggle_loop()
+  await interaction.response.send_message(
+    "Guess I'll just play this song again and again and again until you tell me not to"
+  )
 
 band_bot.run(DISC_TOKEN)

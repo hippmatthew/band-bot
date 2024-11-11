@@ -20,6 +20,7 @@ class Bot(commands.Bot):
   def __init__(self):
     self._voice_client: Optional[discord.VoiceClient] = None
     self._queue = SongQueue()
+    self._is_looping = False
 
     super().__init__( command_prefix = "/", intents = discord.Intents.all() )
 
@@ -85,7 +86,7 @@ class Bot(commands.Bot):
     await interaction.followup.send(f"Added to queue: {info["title"]}")
 
     if not self._voice_client.is_playing():
-      await self._play_next(interaction)
+      await self._play_next(interaction, song)
 
   async def _validate(self, interaction: discord.Interaction):
     if not isinstance(interaction.user, discord.Member):
@@ -108,16 +109,33 @@ class Bot(commands.Bot):
 
     return True
 
-  async def _play_next(self, interaction):
+  async def skip(self, interaction: discord.Interaction):
+    if not self._validate(interaction): return
+
+    if not self._voice_client:
+      await interaction.response.send_message("I'm eating a sandwich right now. Call me later")
+      return
+
+    if not self._voice_client.is_playing():
+      await interaction.response.send_message("I ain't even playing nothing")
+      return
+
+    await interaction.response.send_message("Fine. I'll play the next tune")
+    self._voice_client.stop()
+
+  def toggle_loop(self):
+    self._is_looping = not self._is_looping
+
+  async def _play_next(self, interaction, prev_song: Song):
     if self._queue.empty(): return
     if not self._voice_client: return
 
-    song = self._queue.next()
+    song = prev_song if self._is_looping else self._queue.next()
 
     embed=discord.Embed(title=f"Up Next: {song.title}", description=f"requested by: {song.requester.mention}", color=discord.Color.dark_gold(), url=song.url)
     await interaction.followup.send(embed=embed)
 
     self._voice_client.play(
       discord.FFmpegPCMAudio( song.stream, options = "-vn" ),
-      after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction), self.loop)
+      after = lambda e: asyncio.run_coroutine_threadsafe(self._play_next(interaction, song), self.loop)
     )
