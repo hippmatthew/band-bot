@@ -1,9 +1,7 @@
 import asyncio
 import discord
 import os
-from datetime import datetime
 from discord.ext import commands
-from discord.ext.commands._types import UserCheck
 from dotenv import load_dotenv
 from pathlib import Path
 from random import randint
@@ -25,7 +23,7 @@ class Bot(commands.Bot):
     self._queue = SongQueue()
     self._is_looping = False
     self._ytdl_opts = { "extract_flat": 'in_playlist', "skip_download": True }
-    self._now_playing_message_id: Optional[str] = None
+    self._now_playing_message_id: Optional[int] = None
 
     super().__init__( command_prefix = "/", intents = discord.Intents.all() )
 
@@ -69,7 +67,7 @@ class Bot(commands.Bot):
       await interaction.response.defer( thinking = True )
     try:
       info = YoutubeDL(self._ytdl_opts).extract_info(url, download = False )
-    except Exception as e:
+    except:
       await interaction.followup.send("I don't think that song is an actual song")
       return
 
@@ -95,7 +93,6 @@ class Bot(commands.Bot):
         requester   = cast(discord.Member, interaction.user),
         length      = info["duration_string"],
       )
-
       self._queue.add(song)
 
       add_to_queue_embed=discord.Embed(
@@ -103,12 +100,11 @@ class Bot(commands.Bot):
         url=song.url,
         description=song.length
       )
-      add_to_queue_embed.set_author(name=f"Added Song to Queue")
+      add_to_queue_embed.set_author(name="Added Song to Queue")
       await interaction.followup.send(embed=add_to_queue_embed)
 
     if not cast(discord.VoiceClient, self._voice_client).is_playing():
       song = self._queue.next()
-      song.start_download()
       asyncio.run_coroutine_threadsafe(self._play_next(interaction, song), self.loop)
 
   async def _validate(self, interaction: discord.Interaction) -> bool:
@@ -149,17 +145,15 @@ class Bot(commands.Bot):
   def toggle_loop(self):
     self._is_looping = not self._is_looping
 
-  async def _play_next(self, interaction: discord.Interaction, song: Song):
-    if self._queue.empty(): return
+  async def _play_next(self, interaction: discord.Interaction, song: Optional[Song]):
+    print(f"queue is empty: {self._queue.empty()}")
+
+    if not song: return
     if not self._voice_client: return
 
+    song.start_download()
     song.wait_for_stream()
     stream = song.stream if randint(1, 100) != 69 else "rickroll.mp4a"
-
-    next_song = song
-    if not self._is_looping:
-      next_song = self._queue.next()
-      next_song.start_download()
 
     now_playing_embed=discord.Embed(
       description=f"""
@@ -188,18 +182,21 @@ class Bot(commands.Bot):
         await self._bot.skip(interaction=interaction)
 
       @discord.ui.button(label='Stop', style=discord.ButtonStyle.red, custom_id='now_playing:stop', emoji='🛑')
-      async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+      async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._bot.leave(interaction=interaction)
 
     if self._now_playing_message_id != None:
       await interaction.followup.delete_message(self._now_playing_message_id)
     result = await interaction.followup.send(embed=now_playing_embed, view=NowPlayingView(self))
+    if not result:
+      print("failed to get result from sending now playing embed")
+      return
     self._now_playing_message_id = result.id
 
     self._voice_client.play(
       discord.FFmpegPCMAudio( stream, options = "-vn" ),
       after = lambda e: asyncio.run_coroutine_threadsafe(
-        self._play_next(interaction, next_song),
+        self._play_next(interaction, song if self._is_looping else self._queue.next()),
         self.loop
       )
     )

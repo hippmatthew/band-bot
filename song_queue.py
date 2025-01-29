@@ -1,6 +1,4 @@
-import asyncio
 import discord
-from discord.ext import commands
 from threading import Thread
 from typing import Optional, cast
 from yt_dlp import YoutubeDL
@@ -21,6 +19,8 @@ class Song:
     self._thread.join()
 
   def _download(self):
+    if self.stream != "": return
+
     info = YoutubeDL({ "format": "bestaudio/best" }).extract_info( self.url, download = False )
     if not info:
       print(f"failed to download {self.title}")
@@ -39,7 +39,7 @@ class SongQueue:
     return len(self.__queue) == 0
 
   def next(self):
-    return self.__queue.pop(0)
+    return self.__queue.pop(0) if not self.empty() else None
 
   def clear(self):
     self.__queue = []
