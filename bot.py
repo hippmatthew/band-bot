@@ -65,6 +65,7 @@ class Bot(commands.Bot):
       await self.join(interaction)
     else:
       await interaction.response.defer( thinking = True )
+
     try:
       info = YoutubeDL(self._ytdl_opts).extract_info(url, download = False )
     except:
@@ -107,6 +108,29 @@ class Bot(commands.Bot):
       song = self._queue.next()
       asyncio.run_coroutine_threadsafe(self._play_next(interaction, song), self.loop)
 
+  async def skip(self, interaction: discord.Interaction):
+    if not await self._validate(interaction): return
+
+    if not self._voice_client:
+      await interaction.response.send_message("I'm eating a sandwich right now. Call me later")
+      return
+
+    if not self._voice_client.is_playing():
+      await interaction.response.send_message("I ain't even playing nothing")
+      return
+
+    await interaction.response.send_message("Fine. I'll play the next tune")
+    self._voice_client.stop()
+
+  def toggle_loop(self):
+    self._is_looping = not self._is_looping
+
+  async def play_jbc(self, interaction: discord.Interaction):
+    await self.play(interaction, "https://www.youtube.com/watch?v=_sI_Ps7JSEk&t=7s")
+
+  async def play_jbc2(self, interaction: discord.Interaction):
+    await self.play(interaction, "https://www.youtube.com/watch?v=DpBWUv_91ho")
+
   async def _validate(self, interaction: discord.Interaction) -> bool:
     if not isinstance(interaction.user, discord.Member):
       await interaction.response.send_message("This ain't no bandstand!")
@@ -127,23 +151,6 @@ class Bot(commands.Bot):
       return False
 
     return True
-
-  async def skip(self, interaction: discord.Interaction):
-    if not await self._validate(interaction): return
-
-    if not self._voice_client:
-      await interaction.response.send_message("I'm eating a sandwich right now. Call me later")
-      return
-
-    if not self._voice_client.is_playing():
-      await interaction.response.send_message("I ain't even playing nothing")
-      return
-
-    await interaction.response.send_message("Fine. I'll play the next tune")
-    self._voice_client.stop()
-
-  def toggle_loop(self):
-    self._is_looping = not self._is_looping
 
   async def _play_next(self, interaction: discord.Interaction, song: Optional[Song]):
     print(f"queue is empty: {self._queue.empty()}")

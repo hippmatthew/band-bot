@@ -31,6 +31,14 @@ async def leave(interaction: discord.Interaction):
 async def play(interaction: discord.Interaction, *, url: str):
   await band_bot.play(interaction, url)
 
+@band_bot.tree.command( name = "play_jazz_bar_classics", description = "band bot plays jazz bar classics" )
+async def play_jbc(interaction: discord.Interaction):
+  await band_bot.play_jbc(interaction)
+
+@band_bot.tree.command( name = "play_jazz_bar_classics_2", description = "band bot plays jazz bar masterpieces" )
+async def play_jbc2(interaction: discord.Interaction):
+  await band_bot.play_jbc2(interaction)
+
 @band_bot.tree.command( name = "skip", description = "band bot skips the current song" )
 async def skip(interaction: discord.Interaction):
   await band_bot.skip(interaction)
