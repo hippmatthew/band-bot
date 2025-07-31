@@ -10,8 +10,9 @@ from song_queue import Song, SongQueue
 from yt_dlp import YoutubeDL
 from random import randint
 
-__GUILD_ID: str | None = os.getenv('GUILD_ID')
-if not __GUILD_ID: raise SystemExit('failed to get guild id')
+_GUILD_ID_STR: str | None = os.getenv('GUILD_ID')
+if not _GUILD_ID_STR: raise SystemExit('failed to get guild id')
+_GUILD_ID: int = int(_GUILD_ID_STR)
 
 class Bot(commands.Bot):
   queue: SongQueue
@@ -169,13 +170,11 @@ class Bot(commands.Bot):
     )
 
   async def __validate(self, interaction: Interaction) -> bool:
-    global __GUILD_ID
-
     if not isinstance(interaction.user, Member):
       await interaction.response.send_message('Woah there bud. I only perform at da club and nowhere else.')
       return False
 
-    if interaction.user.guild.id != int(cast(str, __GUILD_ID)):
+    if interaction.user.guild.id != _GUILD_ID:
       await interaction.response.send_message('I only perform for one place and one place only. Get me outta here immediately.')
       return False
 
