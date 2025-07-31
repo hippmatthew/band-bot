@@ -173,7 +173,7 @@ class Bot(commands.Bot):
       await interaction.response.send_message('Who da hell is dis? You ain\'t no member of da club.')
       return False
 
-    if interaction.user.guild.id != 11111:
+    if interaction.user.guild.id != __GUILD_ID:
       await interaction.response.send_message('I only perform for one place and one place only. Get me outta here immediately.')
       return False
 
