@@ -11,7 +11,7 @@ from yt_dlp import YoutubeDL
 from random import randint
 from views import NowPlayingView
 
-__GUILD_ID: str | None = os.getenv("GUILD_ID")
+__GUILD_ID: str | None = os.getenv('GUILD_ID')
 if not __GUILD_ID: raise SystemExit('failed to get guild id')
 
 class Bot(commands.Bot):
@@ -24,7 +24,7 @@ class Bot(commands.Bot):
   def __init__(self) -> None:
     self.queue = SongQueue()
     self.__voice_client = None
-    self.__ytdl_opts = { "extract_flat": 'in_playlist', "skip_download": True }
+    self.__ytdl_opts = { "extract_flat": 'in_playlist', 'skip_download': True }
     self.__is_looping = False
     self.__now_playing_msg_id = None
 
