@@ -1,9 +1,6 @@
 import discord.ui
 from discord import Interaction, ButtonStyle
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-  from bot import Bot
+from bot import Bot
 
 class NowPlayingView(discord.ui.View):
   __bot: Bot

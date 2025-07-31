@@ -9,7 +9,6 @@ from typing import Any, cast
 from song_queue import Song, SongQueue
 from yt_dlp import YoutubeDL
 from random import randint
-from views import NowPlayingView
 
 __GUILD_ID: str | None = os.getenv('GUILD_ID')
 if not __GUILD_ID: raise SystemExit('failed to get guild id')
@@ -155,6 +154,7 @@ class Bot(commands.Bot):
       url   = song.url
     )
 
+    from views import NowPlayingView
     result: Message = await interaction.followup.send(
       embed = now_playing_embed, view = NowPlayingView(self), wait = True
     )
