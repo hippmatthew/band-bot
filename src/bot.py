@@ -169,11 +169,13 @@ class Bot(commands.Bot):
     )
 
   async def __validate(self, interaction: Interaction) -> bool:
+    global __GUILD_ID
+
     if not isinstance(interaction.user, Member):
-      await interaction.response.send_message('Who da hell is dis? You ain\'t no member of da club.')
+      await interaction.response.send_message('Woah there bud. I only perform at da club and nowhere else.')
       return False
 
-    if interaction.user.guild.id != __GUILD_ID:
+    if interaction.user.guild.id != int(cast(str, __GUILD_ID)):
       await interaction.response.send_message('I only perform for one place and one place only. Get me outta here immediately.')
       return False
 
