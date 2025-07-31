@@ -40,5 +40,4 @@ async def skip(interaction: Interaction):
 async def loop(interaction: Interaction):
   await __BAND_BOT.toggle_loop(interaction)
 
-if __name__ == 'main':
-  __BAND_BOT.run(__DISC_TOKEN)
+__BAND_BOT.run(__DISC_TOKEN)
