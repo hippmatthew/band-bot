@@ -97,9 +97,9 @@ class Bot(commands.Bot):
     else:
       self.queue.add(Song(
         title       = info["title"],
-        url         = info['url'],
+        url         = url,
         requester   = cast(Member, interaction.user),
-        length      = info["duration"],
+        length      = info["duration_string"],
       ))
       await interaction.followup.send(f'Yeah I know {info['title']}. I\'ll add it to the queue.')
 
