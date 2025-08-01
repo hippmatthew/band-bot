@@ -1,16 +1,18 @@
-from discord import Member
+import discord
 from threading import Thread
-from typing import cast, Optional
+from typing import Any, cast
 from yt_dlp import YoutubeDL
+
+_YTDLP_OPTS: dict[str, Any] = { 'format': 'bestaudio/best' }
 
 class Song:
   title: str
   url: str
-  requester: Member
+  requester: discord.Member
   length: str
   __thread: Thread
 
-  def __init__(self, title: str, url: str, requester: Member, length: str) -> None:
+  def __init__(self, title: str, url: str, requester: discord.Member, length: str) -> None:
     self.title = title
     self.url = url
     self.requester = requester
@@ -27,14 +29,21 @@ class Song:
   def __download(self) -> None:
     if self.stream != '': return
 
-    info = YoutubeDL({ 'format': 'bestaudio/best' }).extract_info( self.url, download = False )
+    try:
+      with YoutubeDL(_YTDLP_OPTS) as ytdl:
+        info = ytdl.extract_info( self.url, download = False )
+    except:
+      print(f'failed to download {self.title}')
+      return
+
     if not info:
       print(f'failed to download {self.title}')
       return
+
     self.stream = cast(str, info['url'])
 
 class SongQueue:
-  current_song: Optional[Song]
+  current_song: Song | None
   __queue: list[Song]
 
   def __init__(self) -> None:
@@ -55,7 +64,7 @@ class SongQueue:
   def empty(self) -> bool:
     return len(self.__queue) == 0
 
-  def next(self) -> Optional[Song]:
+  def next(self) -> Song | None:
     return self.__queue.pop(0) if not self.empty() else None
 
   def clear(self) -> None:
