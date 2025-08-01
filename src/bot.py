@@ -33,17 +33,11 @@ class Bot(commands.Bot):
   async def join(self, interaction: Interaction) -> None:
     if not await self.__validate(interaction): return
 
-    user: Member = cast(Member, interaction.user)
-    voice: VoiceState = cast(VoiceState, user.voice)
-    channel: VoiceChannel = cast(VoiceChannel, voice.channel)
-
-    if self.__voice_client and self.__voice_client.channel != channel:
-      await self.__voice_client.move_to(channel)
-    else:
-      self.__voice_client = await channel.connect()
+    channel_name: str = await self.__join_channel(interaction)
+    vc: VoiceClient = cast(VoiceClient, self.__voice_client)
 
     await interaction.response.send_message(
-      f'{self.__voice_client.user.name} is performing at {channel.name}'
+      f'{vc.user.display_name} is performing at {channel_name}'
     )
 
   async def leave(self, interaction: Interaction) -> None:
@@ -56,19 +50,24 @@ class Bot(commands.Bot):
     await interaction.response.send_message('Call me back when ya need me')
     await self.__voice_client.disconnect()
 
-    self.__voice_client = None
     self.queue.clear()
     self.queue.current_song = None
+    self.__voice_client = None
     self.__is_looping = False
     self.__now_playing_msg_id = None
 
   async def play(self, interaction: Interaction, url: str) -> None:
     if not await self.__validate(interaction): return
 
-    if not self.__voice_client:
-      await self.join(interaction)
-    else:
-      await interaction.response.defer( thinking = True )
+    await interaction.response.defer( thinking = True )
+
+    user: Member = cast(Member, interaction.user)
+    voice: VoiceState = cast(VoiceState, user.voice)
+    channel: VoiceChannel = cast(VoiceChannel, voice.channel)
+
+    if not self.__voice_client or self.__voice_client.channel != channel:
+      await self.__join_channel(interaction)
+    vc: VoiceClient = cast(VoiceClient, self.__voice_client)
 
     try:
       with YoutubeDL(self.__ytdl_opts) as ytdl:
@@ -101,7 +100,7 @@ class Bot(commands.Bot):
       ))
       await interaction.followup.send(f'Yeah I know {info['title']}. I\'ll add it to the queue.')
 
-    if not self.__voice_client.is_playing():
+    if not vc.is_playing():
       asyncio.run_coroutine_threadsafe(self.__play_next(interaction, self.queue.next()), self.loop)
 
   async def skip(self, interaction: Interaction) -> None:
@@ -172,12 +171,28 @@ class Bot(commands.Bot):
       await interaction.response.send_message('Woah there bud. I only perform at da club and nowhere else.')
       return False
 
-    if interaction.user.guild.id != _GUILD_ID:
-      await interaction.response.send_message('I only perform for one place and one place only. Get me outta here immediately.')
-      return False
-
     if not interaction.user.voice:
       await interaction.response.send_message('You ain\'t even at the venue!')
       return False
 
+    if not interaction.user.voice.channel:
+      await interaction.response.send_message('You may be here... but you\'re definitely not here')
+      return False
+
+    if interaction.user.voice.channel.guild.id != _GUILD_ID:
+      await interaction.response.send_message('I only perform for one place and one place only. Get me outta here immediately.')
+      return False
+
     return True
+
+  async def __join_channel(self, interaction: Interaction) -> str:
+    user: Member = cast(Member, interaction.user)
+    voice: VoiceState = cast(VoiceState, user.voice)
+    channel: VoiceChannel = cast(VoiceChannel, voice.channel)
+
+    if self.__voice_client and self.__voice_client.channel != channel:
+      await self.__voice_client.move_to(channel)
+    else:
+      self.__voice_client = await channel.connect()
+
+    return channel.name
