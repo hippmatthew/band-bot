@@ -2,12 +2,12 @@ import asyncio
 import discord
 from discord.ext import commands
 from discord.channel import VocalGuildChannel
-from song_queue import Song, SongQueue
-from validation import validate_context, validate_interaction
 from typing import Any, cast
 from yt_dlp import YoutubeDL
 from random import randint
-from env import jbc_url, jbm_url
+from src.env import jbc_url, jbm_url
+from src.song_queue import Song, SongQueue
+from src.validation import validate_context, validate_interaction
 
 _YTDLP_OPTS: dict[str, Any] = { "extract_flat": 'in_playlist', 'skip_download': True }
 _FFMPEG_OPTS: str = '-vn'

@@ -1,7 +1,7 @@
 import discord
 from discord.channel import VocalGuildChannel
-from cogs.music import MusicCog
-from validation import validate_interaction
+from src.cogs.music import MusicCog
+from src.validation import validate_interaction
 
 class NowPlayingView(discord.ui.View):
   __music_cog: MusicCog
