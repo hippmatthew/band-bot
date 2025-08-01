@@ -20,6 +20,9 @@ async def main():
 
   async with _BAND_BOT:
     await _BAND_BOT.load_extension('src.cogs.music')
+    print('loaded commands:')
+    for cmd in _BAND_BOT.commands:
+        print(f'\t{cmd.name} - {cmd.callback.__module__}')
     await _BAND_BOT.start(disc_token())
 
 if __name__ == '__main__':

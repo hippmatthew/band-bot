@@ -14,6 +14,7 @@ _FFMPEG_OPTS: str = '-vn'
 
 async def setup(bot: commands.Bot):
   await bot.add_cog(MusicCog(bot))
+  print('installed a music cog onto band bot')
 
 class MusicCog(commands.Cog):
   queue: SongQueue
