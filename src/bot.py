@@ -48,7 +48,7 @@ class Bot(commands.Bot):
       return
 
     await interaction.response.send_message('Call me back when ya need me')
-    await self.__voice_client.disconnect()
+    await self.__voice_client.disconnect(force = True)
 
     self.queue.clear()
     self.queue.current_song = None
@@ -190,9 +190,9 @@ class Bot(commands.Bot):
     voice: VoiceState = cast(VoiceState, user.voice)
     channel: VoiceChannel = cast(VoiceChannel, voice.channel)
 
-    if self.__voice_client and self.__voice_client.channel != channel:
+    if self.__voice_client and self.__voice_client.is_connected() and self.__voice_client.channel != channel:
       await self.__voice_client.move_to(channel)
     else:
-      self.__voice_client = await channel.connect()
+      self.__voice_client = await channel.connect(reconnect = False)
 
     return channel.name
