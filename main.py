@@ -23,5 +23,5 @@ async def main():
     await _BAND_BOT.add_cog(MusicCog(_BAND_BOT))
     await _BAND_BOT.start(disc_token())
 
-if __name__ == 'main':
+if __name__ == '__main__':
   asyncio.run(main())

@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from discord.channel import VocalGuildChannel
-from env import guild_id, channel_id
+from src.env import guild_id, channel_id
 
 async def validate_context(ctx: commands.Context) -> tuple[VocalGuildChannel, discord.Guild, discord.Member] | None:
   if not ctx.guild or not isinstance(ctx.author, discord.Member):

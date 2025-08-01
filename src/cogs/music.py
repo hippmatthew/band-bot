@@ -214,7 +214,7 @@ class MusicCog(commands.Cog):
       url   = song.url
     )
 
-    from views.now_playing import NowPlayingView
+    from src.views.now_playing import NowPlayingView
     self.__now_playing_msg = await ctx.send(embed = now_playing_embed, view = NowPlayingView(self))
 
     vc.play(
