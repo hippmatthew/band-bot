@@ -1,8 +1,8 @@
 import asyncio
 import discord
 from discord.ext import commands
-from cogs.music import MusicCog
-from env import check_env, disc_token
+from src.cogs.music import MusicCog
+from src.env import check_env, disc_token
 
 _BAND_BOT: commands.Bot = commands.Bot(
   command_prefix  = commands.when_mentioned_or('/'),
