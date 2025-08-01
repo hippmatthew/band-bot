@@ -65,12 +65,10 @@ class Bot(commands.Bot):
   async def play(self, interaction: Interaction, url: str) -> None:
     if not await self.__validate(interaction): return
 
-    await interaction.response.defer( thinking = True )
-
     if not self.__voice_client:
-      channel: VoiceChannel = cast(VoiceChannel, cast(VoiceState, cast(Member, interaction.user).voice).channel)
-      self.__voice_client = await channel.connect()
-      await interaction.followup.send(f'{self.__voice_client.user.name} is performing at {channel.name}')
+      await self.join(interaction)
+    else:
+      await interaction.response.defer( thinking = True )
 
     try:
       with YoutubeDL(self.__ytdl_opts) as ytdl:
