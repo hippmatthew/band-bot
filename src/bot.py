@@ -193,6 +193,6 @@ class Bot(commands.Bot):
     if self.__voice_client and self.__voice_client.is_connected() and self.__voice_client.channel != channel:
       await self.__voice_client.move_to(channel)
     else:
-      self.__voice_client = await channel.connect(reconnect = False)
+      self.__voice_client = await channel.connect()
 
     return channel.name
