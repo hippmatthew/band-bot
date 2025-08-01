@@ -1,7 +1,6 @@
 import asyncio
 import discord
 from discord.ext import commands
-from src.cogs.music import MusicCog
 from src.env import check_env, disc_token
 
 _BAND_BOT: commands.Bot = commands.Bot(
@@ -20,7 +19,7 @@ async def main():
     raise SystemExit(f'errors in environment variables:{error_str}')
 
   async with _BAND_BOT:
-    await _BAND_BOT.add_cog(MusicCog(_BAND_BOT))
+    await _BAND_BOT.load_extension('src.cogs.music')
     await _BAND_BOT.start(disc_token())
 
 if __name__ == '__main__':

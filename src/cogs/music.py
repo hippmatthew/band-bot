@@ -12,6 +12,9 @@ from src.validation import validate_context, validate_interaction
 _YTDLP_OPTS: dict[str, Any] = { "extract_flat": 'in_playlist', 'skip_download': True }
 _FFMPEG_OPTS: str = '-vn'
 
+async def setup(bot: commands.Bot):
+  await bot.add_cog(MusicCog(bot))
+
 class MusicCog(commands.Cog):
   queue: SongQueue
   __bot: commands.Bot
