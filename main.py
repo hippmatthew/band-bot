@@ -2,7 +2,7 @@ import asyncio
 import discord
 from discord.ext import commands
 from collections import defaultdict
-from src.env import check_env, disc_token, guild_id
+from src.env import check_env, disc_token
 
 _BAND_BOT: commands.Bot = commands.Bot(
   command_prefix  = commands.when_mentioned_or('!'),
@@ -12,13 +12,14 @@ _BAND_BOT: commands.Bot = commands.Bot(
 
 @_BAND_BOT.event
 async def on_ready():
-  _BAND_BOT.tree.clear_commands()
-  print('commands cleared')
+  print('clearing commands...')
+  _BAND_BOT.tree.clear_commands(guild = None)
 
+  print('syncing commands...')
   await _BAND_BOT.tree.sync()
-  print('commands synced')
 
   print(f'beating meat as {_BAND_BOT.user}')
+  await _BAND_BOT.close()
 
 async def load_cogs() -> None:
   await _BAND_BOT.load_extension('src.cogs.music')
