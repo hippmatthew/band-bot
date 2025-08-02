@@ -30,25 +30,16 @@ class MusicCog(commands.Cog):
 
   @commands.command()
   async def join(self, ctx: commands.Context) -> None:
-    # result: tuple[VocalGuildChannel, discord.Guild, discord.Member] | None = await validate_context(ctx)
-    # if not result: return
-    # channel, guild, _ = result
+    result: tuple[VocalGuildChannel, discord.Guild, discord.Member] | None = await validate_context(ctx)
+    if not result: return
+    channel, guild, _ = result
 
-    if ctx.voice_client:
+    if ctx.voice_client is not None:
       await ctx.send('Fool, I\'m already playing somewhere else. Catch me after the show over here.')
       return
-
-    if not isinstance(ctx.author, discord.Member):
-      return
-
-    if not ctx.author.voice:
-      return
-
-    if not ctx.author.voice.channel:
-      return
-
+ 
     await ctx.author.voice.channel.connect()
-    # await ctx.send(f'I, {guild.me.display_name}, is performin at {channel.name}!')
+    await ctx.send(f'I, {guild.me.display_name}, is performin at {channel.name}!')
 
   @commands.command()
   async def play(self, ctx: commands.Context, *, url: str):
